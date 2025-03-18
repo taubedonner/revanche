@@ -1,0 +1,26 @@
+# CLion
+/.idea
+/cmake-build*
+
+#Visual Studio
+/.vs
+/out*
+/CMakeSettings.json
+/enc-temp-folder
+
+# Visual Studio Code
+/.vscode
+
+# XCode
+/build
+.DS_Store
+
+# Installers
+/distribution
+
+# Python virtual environment settings
+/venv
+
+# Node-JS packages
+/node_modules/
+package-lock.json

@@ -1,0 +1,24 @@
+cmake_minimum_required(VERSION 3.30)
+
+project(revanche)
+
+set(OUT_DIR ${CMAKE_BINARY_DIR}/out)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUT_DIR}/bin CACHE PATH "" FORCE)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUT_DIR}/lib CACHE PATH "" FORCE)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${OUT_DIR}/lib CACHE PATH "" FORCE)
+set(CMAKE_COMPILE_PDB_OUTPUT_DIRECTORY ${OUT_DIR}/pdb CACHE PATH "" FORCE)
+set(CMAKE_PDB_OUTPUT_DIRECTORY ${OUT_DIR}/pdb CACHE PATH "" FORCE)
+
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/Dependencies.cmake)
+
+set(CMAKE_CXX_STANDARD 20)
+
+if (WIN32)
+    add_definitions("-DUNICODE" "-D_UNICODE")
+endif ()
+
+if (MSVC)
+    string(REPLACE "/W3" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+endif ()
+
+add_subdirectory(src)
