@@ -5,6 +5,13 @@ include(${CMAKE_CURRENT_LIST_DIR}/CPM.cmake)
 #### Krog ####
 CPMAddPackage("gh:taubedonner/krog#origin/next")
 
+#### nlohmann/json ####
+CPMAddPackage(
+        NAME json
+        VERSION 3.11.3
+        URL https://github.com/nlohmann/json/archive/refs/tags/v3.11.3.zip
+)
+
 #### asio2 ####
 find_package(Threads REQUIRED)
 
@@ -70,7 +77,7 @@ if(asio_ADDED)
 endif()
 
 #### readerwriterqueue ####
-#CPMAddPackage("gh:cameron314/readerwriterqueue@1.0.6")
+CPMAddPackage("gh:cameron314/readerwriterqueue@1.0.6")
 
 #### ImAnim ####
 #CPMAddPackage(
