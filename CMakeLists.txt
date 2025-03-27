@@ -9,9 +9,9 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${OUT_DIR}/lib CACHE PATH "" FORCE)
 set(CMAKE_COMPILE_PDB_OUTPUT_DIRECTORY ${OUT_DIR}/pdb CACHE PATH "" FORCE)
 set(CMAKE_PDB_OUTPUT_DIRECTORY ${OUT_DIR}/pdb CACHE PATH "" FORCE)
 
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/Dependencies.cmake)
-
 set(CMAKE_CXX_STANDARD 20)
+
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/Dependencies.cmake)
 
 if (WIN32)
     add_definitions("-DUNICODE" "-D_UNICODE")

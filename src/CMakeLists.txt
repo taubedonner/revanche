@@ -1,17 +1,15 @@
 set (HEADERS
         revancheapp.h
-        vanch/command.h
-        vanch/commandregistry.h
+        vanch/message.h
+        vanch/messageregistry.h
         vanch/udpclient.h
-        vanch/udpscanner.h
 )
 
 set (SOURCES
         revancheapp.cc
-        vanch/command.cc
-        vanch/commandregistry.cc
+        vanch/message.cc
+        vanch/messageregistry.cc
         vanch/udpclient.cc
-        vanch/udpscanner.cc
 )
 
 add_executable(revanche WIN32)
