@@ -26,8 +26,7 @@ public:
 
   virtual std::string getMessageName() = 0;
 
-  virtual void parseParameters(std::vector<uint8_t> params) {
-  }
+  virtual void parseParameters(std::vector<uint8_t> params) = 0;
 
   virtual void render() {
     ImGui::TextUnformatted("No parameters to display");
@@ -59,7 +58,7 @@ public:
   }
 
 protected:
-  [[nodiscard]] virtual std::vector<uint8_t> serializeParameters() const { return {}; }
+  [[nodiscard]] virtual std::vector<uint8_t> serializeParameters() const = 0;
 
   static uint8_t calculateChecksum(const std::vector<uint8_t>& data) {
     const uint8_t sum = std::accumulate(data.begin(), data.end(), 0);
@@ -87,7 +86,14 @@ struct ErrorResponse final : Message {
     ImGui::Text("Error [%2x]: %s", m_cmdCode, description.c_str());
   }
 
-  std::string getMessageName() override { return {}; };
+  std::string getMessageName() override { return {}; }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+
+protected:
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+
+public:;
 };
 
 /* 01H Automatic card reading data packet */
@@ -180,6 +186,9 @@ public:
     }
   }
 
+protected:
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+
 private:
   static void addTableRow(const std::string& field, const std::string& value) {
     ImGui::TableNextRow();
@@ -234,6 +243,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_interfaceType, m_baudRateCode};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class SetBaudRateResponse final : public Message {
@@ -250,6 +261,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 02H Get baud rate */
@@ -279,6 +294,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_interfaceType};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class GetBaudRateResponse : public Message {
@@ -309,6 +326,8 @@ public:
     ImGui::Text("Baud Rate Code: %u", m_baudRateCode);
     ImGui::Text("Baud Rate: %u bps", getBaudRate(m_baudRateCode));
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 
 private:
   [[nodiscard]] static uint32_t getBaudRate(const uint8_t code) {
@@ -344,6 +363,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_address};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class SetRS485AddressResponse : public Message {
@@ -360,6 +381,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 04H Get RS485 address */
@@ -378,6 +403,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 class GetRS485AddressResponse final : public Message {
@@ -407,6 +436,8 @@ public:
   void render() override {
     ImGui::Text("RS485 Address: %u", m_address);
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 /* 05H Get version number */
@@ -425,6 +456,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 class GetVersionNumberResponse final : public Message {
@@ -452,6 +487,8 @@ public:
   void render() override {
     ImGui::Text("Version Info: %s", m_versionInfo.c_str());
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 /* 06H Set relay status */
@@ -488,6 +525,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_relayNumber, m_status};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class SetRelayStatusResponse final : public Message {
@@ -504,6 +543,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 08H Get relay status */
@@ -533,6 +576,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_relayNumber};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class GetRelayStatusResponse final : public Message {
@@ -563,6 +608,8 @@ public:
     const char* statusText = (m_status == 0) ? "Disconnect (0x00)" : "Pull-in (0x01)";
     ImGui::Text("Relay Status: %s", statusText);
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 /* 0BH Set buzzer */
@@ -597,6 +644,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_switch};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class SetBuzzerResponse final : public Message {
@@ -613,6 +662,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 0CH Get buzzer */
@@ -631,6 +684,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 class GetBuzzerResponse final : public Message {
@@ -661,6 +718,8 @@ public:
     const char* switchText = (m_switch == 0) ? "Off (0x00)" : "On (0x01)";
     ImGui::Text("Buzzer Switch: %s", switchText);
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 /* 0DH Set card reading mode */
@@ -700,6 +759,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_mode};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class SetCardReadingModeResponse final : public Message {
@@ -716,6 +777,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 0EH Get card reading mode */
@@ -734,6 +799,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 class GetCardReadingModeResponse final : public Message {
@@ -772,6 +841,8 @@ public:
       m_mode = static_cast<uint8_t>(temp_value);
     }
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 /* 0FH Set output power */
@@ -803,6 +874,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_antennaNumber, m_powerValue};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class SetOutputPowerResponse final : public Message {
@@ -819,6 +892,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 10H Get output power */
@@ -848,6 +925,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_antennaNumber};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class GetOutputPowerResponse final : public Message {
@@ -877,6 +956,8 @@ public:
   void render() override {
     ImGui::Text("Output Power: %u dBm", m_powerValue);
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 /* 13H Set frequency band frequency point */
@@ -915,6 +996,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_region, m_startFrequency, m_endFrequency};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class SetFrequencyBandResponse final : public Message {
@@ -931,6 +1014,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 14H Get frequency band frequency point */
@@ -949,6 +1036,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 class GetFrequencyBandResponse final : public Message {
@@ -1000,6 +1091,8 @@ public:
     ImGui::Text("Start Frequency: %u", m_startFrequency);
     ImGui::Text("End Frequency: %u", m_endFrequency);
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 /* 17H Restore reader/writer to factory settings */
@@ -1018,6 +1111,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 class RestoreFactorySettingsResponse final : public Message {
@@ -1034,6 +1131,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 18H Restart reader/writer */
@@ -1052,6 +1153,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 class RestartReaderResponse final : public Message {
@@ -1068,6 +1173,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 19H Restore WIFI factory settings */
@@ -1086,6 +1195,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 class RestoreWIFIResponse final : public Message {
@@ -1102,6 +1215,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 1BH Set reader time */
@@ -1141,6 +1258,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_year, m_month, m_day, m_hour, m_minute, m_second};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class SetReaderTimeResponse final : public Message {
@@ -1157,6 +1276,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 1CH Get reader time */
@@ -1175,6 +1298,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 class GetReaderTimeResponse final : public Message {
@@ -1215,6 +1342,8 @@ public:
     ImGui::Text("Time: %04d-%02d-%02d %02d:%02d:%02d",
                 m_year, m_month, m_day, m_hour, m_minute, m_second);
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 /* 1FH Set tag filter */
@@ -1272,6 +1401,8 @@ public:
     params.insert(params.end(), m_maskData.begin(), m_maskData.end());
     return params;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class SetTagFilterResponse final : public Message {
@@ -1288,6 +1419,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 20H Get tag filter */
@@ -1306,6 +1441,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 class GetTagFilterResponse final : public Message {
@@ -1354,6 +1493,8 @@ public:
     }
     ImGui::Text("Mask Data: %s", maskDataStr.c_str());
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 /* 29H Set the reported hardware interface */
@@ -1398,6 +1539,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_interface, m_enable};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class SetReportedHardwareInterfaceResponse final : public Message {
@@ -1414,6 +1557,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 2AH Gets the reported hardware interface */
@@ -1451,6 +1598,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_interface};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class GetReportedHardwareInterfaceResponse final : public Message {
@@ -1481,6 +1630,8 @@ public:
     const char* enabledText = m_enabled ? "Enabled (0x01)" : "Disabled (0x00)";
     ImGui::Text("Reporting Enabled: %s", enabledText);
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 /* 33H Set reader ID */
@@ -1514,6 +1665,8 @@ public:
     std::vector<uint8_t> params(m_id.begin(), m_id.end());
     return params;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class SetReaderIDResponse final : public Message {
@@ -1530,6 +1683,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 34H Get reader ID */
@@ -1548,6 +1705,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 class GetReaderIDResponse final : public Message {
@@ -1575,6 +1736,8 @@ public:
   void render() override {
     ImGui::Text("Reader ID: %s", m_id.c_str());
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 /* 35H Set reader name */
@@ -1608,6 +1771,8 @@ public:
     std::vector<uint8_t> params(m_name.begin(), m_name.end());
     return params;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class SetReaderNameResponse final : public Message {
@@ -1624,6 +1789,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 36H Get reader name */
@@ -1642,6 +1811,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 class GetReaderNameResponse final : public Message {
@@ -1669,6 +1842,8 @@ public:
   void render() override {
     ImGui::Text("Reader Name: %s", m_name.c_str());
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 /* 09H Set relay automatic control parameters */
@@ -1712,6 +1887,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_relayNumber, m_purpose, m_pickupTime};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class SetRelayAutomaticControlResponse final : public Message {
@@ -1728,6 +1905,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 0AH Get relay automatic control parameters */
@@ -1757,6 +1938,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_relayNumber};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class GetRelayAutomaticControlResponse final : public Message {
@@ -1805,6 +1988,8 @@ public:
     ImGui::Text("Purpose of Relay: %s", purposeText.c_str());
     ImGui::Text("Pickup Time: %u seconds", m_pickupTime);
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 /* 15H Set automatic polling antenna */
@@ -1848,6 +2033,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return m_antennas;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class SetAutomaticPollingAntennaResponse final : public Message {
@@ -1864,6 +2051,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 16H Get automatic polling antenna */
@@ -1882,6 +2073,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 class GetAutomaticPollingAntennaResponse final : public Message {
@@ -1917,6 +2112,8 @@ public:
     }
     ImGui::Text("Antennas: %s", antennasStr.c_str());
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 /* 21H Set the automatic reading tag type */
@@ -1961,6 +2158,8 @@ public:
   [[nodiscard]] std::vector<uint8_t> serializeParameters() const override {
     return {m_tagTypes};
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
 };
 
 class SetAutomaticReadingTagTypeResponse final : public Message {
@@ -1977,6 +2176,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 22H Get the automatically read tag type */
@@ -1995,6 +2198,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 class GetAutomaticReadingTagTypeResponse final : public Message {
@@ -2029,6 +2236,8 @@ public:
     ImGui::Text("ISO18000-6C Tags (Bit 1): %s", (m_tagTypes & 0b010) ? "Enabled" : "Disabled");
     ImGui::Text("Temperature Tags (Bit 2): %s", (m_tagTypes & 0b100) ? "Enabled" : "Disabled");
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 /* 2BH Set automatic reporting fields */
@@ -2101,6 +2310,8 @@ public:
 
   std::string getMessageName() override { return getName(); }
 
+  void parseParameters(std::vector<uint8_t> params) override {};
+
 private:
   uint32_t m_fields; // Битовая маска полей
   uint8_t m_tidStart; // Начальный адрес TID
@@ -2123,6 +2334,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 /* 2CH Get the automatically reported fields */
@@ -2141,6 +2356,10 @@ public:
     msg->parseParameters({data.begin() + 5, data.end() - 1});
     return msg;
   }
+
+  void parseParameters(std::vector<uint8_t> params) override {};
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
+  void render() override { Message::render(); }
 };
 
 class GetAutomaticReportingFieldsResponse final : public Message {
@@ -2203,6 +2422,8 @@ public:
       ImGui::Text("USER Length: %d", m_userLength);
     }
   }
+
+  [[nodiscard]] std::vector<uint8_t> serializeParameters() const override { return {}; }
 };
 
 } // vanch

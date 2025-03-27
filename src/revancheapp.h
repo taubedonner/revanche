@@ -3,10 +3,11 @@
 #include <krog/entry.h>
 
 #include "vanch/messageregistry.h"
+#include "vanch/udpclient.h"
 
 class RevancheApp final : public kr::Layer, protected kr::Loggable {
 public:
-  RevancheApp() : Layer("RevancheApp"), Loggable("App") {
+  RevancheApp() : Layer("RevancheApp"), Loggable("App"), m_client("192.168.1.100", 1969) {
     m_registry.registerMessage(vanch::MessageType_Error, 0x00, "SUCCESSFUL", vanch::ErrorResponse::create);
     m_registry.registerMessage(vanch::MessageType_Error, 0x01, "UNSUPPORTED FUNCTION CODE", vanch::ErrorResponse::create);
     m_registry.registerMessage(vanch::MessageType_Error, 0x02, "REGISTER ADDRESS ERROR", vanch::ErrorResponse::create);
@@ -237,7 +238,21 @@ private:
 
   void OnUiUpdate() override;
 
+  void OnPacketReturn(const std::vector<uint8_t>& data);
+
+  void OnPacketStatus(const std::vector<uint8_t>& data);
+
+  void OnPacketError(const std::string& message, uint8_t code);
+
   vanch::MessageRegistry m_registry;
+
+  vanch::UdpClient m_client;
+
+  std::shared_ptr<vanch::Message> m_command{};
+  std::shared_ptr<vanch::Message> m_received{};
+  std::shared_ptr<vanch::Message> m_status{};
+
+  bool m_show_status{false};
 };
 
 [[maybe_unused]] inline kr::Application* kr::CreateApp() {

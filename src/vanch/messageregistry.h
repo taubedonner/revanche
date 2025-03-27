@@ -18,8 +18,8 @@ public:
   };
 
   [[nodiscard]] std::shared_ptr<Message> createMessage(const std::vector<uint8_t>& data) const {
-    if (data.size() < 6) {
-      // Минимальная длина пакета: Header (1) + Length (2) + Address (1) + Cmd (1) + Check (1)
+    if (data.size() < 5) {
+      // Минимальная длина пакета: Header (1) + Length (2) + Address (1) + Cmd (1)
       return ErrorResponse::create("Invalid packet length", 0xFF);
     }
 
@@ -36,6 +36,8 @@ public:
   void registerMessage(MessageType header, CmdCode cmd, const std::string& name, const MessageCreator creator) {
     m_creators[std::make_pair(header, cmd)] = Entry{name, creator};
   }
+
+  std::map<std::pair<MessageType, CmdCode>, Entry> getCreators() const& { return m_creators; }
 
 private:
   std::map<std::pair<MessageType, CmdCode>, Entry> m_creators;
