@@ -5,6 +5,9 @@ include(${CMAKE_CURRENT_LIST_DIR}/CPM.cmake)
 #### Krog ####
 CPMAddPackage("gh:taubedonner/krog#origin/next")
 
+#### Frozen ####
+CPMAddPackage("gh:serge-sans-paille/frozen#origin/master")
+
 #### nlohmann/json ####
 CPMAddPackage(
         NAME json
