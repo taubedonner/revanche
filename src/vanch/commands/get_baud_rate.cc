@@ -14,7 +14,12 @@ std::vector<uint8_t> CmdGetBaudRate::serializeParameters() const {
 }
 
 void CmdGetBaudRate::render() {
-  ImGui::InputScalar("Interface Type (0=RS232, 1=RS485)", ImGuiDataType_U8, &interfaceType);
+  static const char* interfaceItems[] = {"RS232 (0x00)", "RS485 (0x01)"};
+
+  int temp = interfaceType;
+  if (ImGui::Combo("Interface Type", &temp, interfaceItems, IM_ARRAYSIZE(interfaceItems))) {
+    interfaceType = temp;
+  }
 }
 
 void RetGetBaudRate::deserializeParameters(const std::span<const uint8_t> data) {

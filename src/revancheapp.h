@@ -2,6 +2,8 @@
 
 #include <krog/entry.h>
 
+#include "vanch/backgroundiocontext.h"
+#include "vanch/messageregistry.h"
 #include "vanch/udpclient.h"
 
 struct AppSettings {
@@ -11,7 +13,7 @@ struct AppSettings {
 
 class RevancheApp final : public kr::Layer, protected kr::Loggable {
 public:
-  RevancheApp() : Layer("RevancheApp"), Loggable("App"), m_client("192.168.1.100", 1969) {
+  RevancheApp() : Layer("RevancheApp"), Loggable("App"), m_io(), m_client(m_io.getIoContext(), "192.168.1.100", 1969) {
     vanch::MessageRegistry::init();
   }
 
@@ -30,6 +32,7 @@ private:
 
   void OnPacketBroadcast(const vanch::BroadcastPacket& msg);
 
+  BackgroundIoContext m_io;
   vanch::UdpClient m_client;
 
   std::shared_ptr<vanch::IMessage> m_command{};

@@ -28,7 +28,9 @@ void RevancheApp::OnDetach() {
 void RevancheApp::OnUiUpdate() {
   const bool is_connected = m_client.isRunning();
 
-  constexpr auto flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus;
+  constexpr auto flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking |
+                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoMove |
+                         ImGuiWindowFlags_NoBringToFrontOnFocus;
   const auto viewport = ImGui::GetMainViewport();
   ImGui::SetNextWindowPos(viewport->Pos);
   ImGui::SetNextWindowSize(viewport->Size);
@@ -59,7 +61,8 @@ void RevancheApp::OnUiUpdate() {
       }
       ImGui::SameLine(0, 8);
       ImGui::SetNextItemWidth(80.f);
-      if (ImGui::InputScalar("Port", ImGuiDataType_U16, &m_settings.port, nullptr, nullptr, nullptr, ImGuiInputTextFlags_EnterReturnsTrue)) {
+      if (ImGui::InputScalar("Port", ImGuiDataType_U16, &m_settings.port, nullptr, nullptr, nullptr,
+                             ImGuiInputTextFlags_EnterReturnsTrue)) {
         m_client.setServerEndpoint(m_settings.ip, m_settings.port);
       }
       ImGui::EndGroup();
@@ -79,11 +82,16 @@ void RevancheApp::OnUiUpdate() {
     ImGui::Spacing();
 
     {
-      ImGui::BeginChild("left pane", ImVec2(200, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX, ImGuiWindowFlags_MenuBar);
-      if (ImGui::BeginMenuBar()) { ImGui::TextUnformatted("Command List"); ImGui::EndMenuBar(); }
+      ImGui::BeginChild("left pane", ImVec2(200, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX,
+                        ImGuiWindowFlags_MenuBar);
+      if (ImGui::BeginMenuBar()) {
+        ImGui::TextUnformatted("Command List");
+        ImGui::EndMenuBar();
+      }
       for (const auto& [k, v] : vanch::MessageRegistry::getCommandMetadata()) {
-        if (auto label = fmt::format("{:02X}H {}", k, v); ImGui::Selectable(label.c_str(), (m_command && m_command->getCmdCode() == k))) {
-            m_command = vanch::MessageRegistry::create(k, vanch::MessageType_Command);
+        if (auto label = fmt::format("{:02X}H {}", k, v);
+            ImGui::Selectable(label.c_str(), (m_command && m_command->getCmdCode() == k))) {
+          m_command = vanch::MessageRegistry::create(k, vanch::MessageType_Command);
         }
       }
       ImGui::EndChild();
@@ -91,8 +99,12 @@ void RevancheApp::OnUiUpdate() {
     ImGui::SameLine();
     {
       ImGui::BeginGroup();
-      ImGui::BeginChild("input message", ImVec2(0, ImGui::GetContentRegionAvail().y / 2.0f), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY, ImGuiWindowFlags_MenuBar);
-      if (ImGui::BeginMenuBar()) { ImGui::TextUnformatted("Command Editor"); ImGui::EndMenuBar(); }
+      ImGui::BeginChild("input message", ImVec2(0, ImGui::GetContentRegionAvail().y / 2.0f),
+                        ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY, ImGuiWindowFlags_MenuBar);
+      if (ImGui::BeginMenuBar()) {
+        ImGui::TextUnformatted("Command Editor");
+        ImGui::EndMenuBar();
+      }
       if (m_command) {
         auto title = fmt::format("{:02X}H: {}", m_command->getCmdCode(), m_command->getMessageName());
         ImGui::TextUnformatted(title.c_str());
@@ -102,7 +114,10 @@ void RevancheApp::OnUiUpdate() {
       }
       ImGui::EndChild();
       ImGui::BeginChild("output message", ImVec2(0, 0), ImGuiChildFlags_Borders, ImGuiWindowFlags_MenuBar);
-      if (ImGui::BeginMenuBar()) { ImGui::TextUnformatted("Response View"); ImGui::EndMenuBar(); }
+      if (ImGui::BeginMenuBar()) {
+        ImGui::TextUnformatted("Response View");
+        ImGui::EndMenuBar();
+      }
       if (m_received) {
         m_received->render();
       }
@@ -123,13 +138,9 @@ void RevancheApp::OnUiUpdate() {
   ImGui::End();
 }
 
-void RevancheApp::OnPacketReturn(const std::shared_ptr<vanch::IMessage>& msg) {
-  m_received = std::move(msg);
-}
+void RevancheApp::OnPacketReturn(const std::shared_ptr<vanch::IMessage>& msg) { m_received = msg; }
 
-void RevancheApp::OnPacketStatus(const std::shared_ptr<vanch::IMessage>& msg) {
-  m_status = std::move(msg);
-}
+void RevancheApp::OnPacketStatus(const std::shared_ptr<vanch::IMessage>& msg) { m_status = msg; }
 
 void RevancheApp::OnPacketError(std::string_view message, const uint8_t code) {
   if (code == 0xFF) {
@@ -139,6 +150,4 @@ void RevancheApp::OnPacketError(std::string_view message, const uint8_t code) {
   }
 }
 
-void RevancheApp::OnPacketBroadcast(const vanch::BroadcastPacket& msg) {
-  logger->info("broadcast {}", msg.IP);
-}
+void RevancheApp::OnPacketBroadcast(const vanch::BroadcastPacket& msg) { logger->info("broadcast {}", msg.IP); }
