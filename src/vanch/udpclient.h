@@ -36,6 +36,10 @@ class UdpClient final : kr::Loggable {
 
   void restart();
 
+  void startBroadcastListening();
+
+  void stopBroadcastListening();
+
   void sendCommand(const std::shared_ptr<IMessage>& command);
 
   void setCommandCallback(const CommandCallback& callback);

@@ -20,6 +20,8 @@ void RevancheApp::OnAttach() {
   m_client.setBroadcastCallback(KR_BIND_FN(RevancheApp::OnPacketBroadcast));
 
   m_client.setServerEndpoint(m_settings.ip, m_settings.port);
+
+  m_client.startBroadcastListening();
 }
 
 void RevancheApp::OnDetach() {
@@ -87,6 +89,7 @@ void RevancheApp::OnUiUpdate() {
                                {60, 0})) {
         m_showDevList = true;
       }
+      ImGui::SetItemTooltip("Found VUP-compatible devices");
       ImGui::SameLine();
       std::string hbTime = "\xE2\x88\x9E";
       if (m_statusHeartbeat && m_statusHeartbeat->messageTimestamp.has_value()) {
@@ -100,6 +103,7 @@ void RevancheApp::OnUiUpdate() {
                                {60, 0})) {
         m_showStatus = true;
       }
+      ImGui::SetItemTooltip("Last received heartbeat packet");
       ImGui::SameLine();
       static std::string showStatusBtn = fmt::format("{}  Auto Read", CarbonIcons::Iot::Platform);
       if (ImGui::Button(showStatusBtn.c_str(), {120, 0})) {
@@ -200,7 +204,7 @@ void RevancheApp::OnUiUpdate() {
   }
 
   if (m_showDevList) {
-    ImGui::SetNextWindowSize({1280, 480}, ImGuiCond_Once);
+    ImGui::SetNextWindowSize({840, 360}, ImGuiCond_Once);
     if (ImGui::Begin("Device Finder", &m_showDevList)) {
       if (m_statusDevices.empty()) {
         const auto lab = "No reported devices";
@@ -208,7 +212,7 @@ void RevancheApp::OnUiUpdate() {
         const auto content = ImGui::GetContentRegionMax();
         ImGui::SetCursorPos({(content.x - txtSize.x) / 2.0f, (content.y + txtSize.y) / 2.0f});
         ImGui::TextDisabled(lab);
-      } else if (ImGui::BeginTable("DeviceTable", 9, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable)) {
+      } else if (ImGui::BeginTable("DeviceTable", 9, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable, {0, -1})) {
         ImGui::TableSetupColumn("IP");
         ImGui::TableSetupColumn("Port");
         ImGui::TableSetupColumn("Dev Type");
@@ -216,7 +220,7 @@ void RevancheApp::OnUiUpdate() {
         ImGui::TableSetupColumn("RS485");
         ImGui::TableSetupColumn("RS232 Baud");
         ImGui::TableSetupColumn("RS485 Baud");
-        ImGui::TableSetupColumn("Time");
+        ImGui::TableSetupColumn("Reported time");
         ImGui::TableSetupColumn("Int Model");
         ImGui::TableHeadersRow();
 
@@ -225,11 +229,8 @@ void RevancheApp::OnUiUpdate() {
 
           std::string elapsed = "N/A";
           if (packet->messageTimestamp.has_value()) {
-            auto val = packet->messageTimestamp.value();
-            auto now = std::chrono::system_clock::now();
-            auto seconds = std::chrono::duration_cast<std::chrono::seconds>(now - val).count();
-            const auto time = std::chrono::floor<std::chrono::duration<int64_t>>(val);
-            elapsed = fmt::format("{:%H:%M:%S} ({} s)", std::chrono::current_zone()->to_local(time), seconds);
+            const auto time = std::chrono::floor<std::chrono::duration<int64_t>>(packet->messageTimestamp.value());
+            elapsed = fmt::format("{:%H:%M:%S}", std::chrono::current_zone()->to_local(time));
           }
 
           ImGui::TableSetColumnIndex(0);

@@ -12,7 +12,10 @@ UdpClient::UdpClient(asio::io_context& io, const std::string& serverIp, const ui
       m_serverEndpoint(asio::ip::make_address(serverIp), serverPort),
       m_isRunning(false) {}
 
-UdpClient::~UdpClient() { stop(); }
+UdpClient::~UdpClient() {
+  stop();
+  stopBroadcastListening();
+}
 
 void UdpClient::setServerEndpoint(const std::string& serverIp, uint16_t serverPort) {
   asio::error_code ec;
@@ -42,7 +45,7 @@ bool UdpClient::isRunning() { return m_isRunning; }
 void UdpClient::start() {
   if (m_isRunning) return;
 
-  asio::error_code ec, ec1, ec2;
+  asio::error_code ec, ec1;
 
   logger->info("Starting UDP Client");
 
@@ -62,7 +65,32 @@ void UdpClient::start() {
 
   logger->info("UDP Client port: {}", m_socket.local_endpoint().port());
 
+  m_isRunning = true;
+
+  co_spawn(m_io, listenLoop(), asio::detached);
+  co_spawn(m_io, sendLoop(), asio::detached);
+}
+
+void UdpClient::stop() {
+  if (!m_isRunning) return;
+
+  logger->info("Stopping UDP Client");
+
+  m_isRunning = false;
+  m_socket.close();
+}
+
+void UdpClient::restart() {
+  stop();
+  start();
+}
+
+void UdpClient::startBroadcastListening() {
+  if (m_broadcastSocket.is_open()) return;
+
+  asio::error_code ec, ec1, ec2;
   bool broadcastOk = true;
+
   m_broadcastSocket.open(asio::ip::udp::v4(), ec);
   m_broadcastSocket.bind(asio::ip::udp::endpoint(asio::ip::udp::v4(), k_defaultBroadcastPort), ec1);
   m_broadcastSocket.set_option(asio::socket_base::broadcast(true), ec2);
@@ -88,26 +116,12 @@ void UdpClient::start() {
     logger->warn("UDP Broadcast Server socket is not available until the next restart");
   }
 
-  m_isRunning = true;
-
   if (broadcastOk) co_spawn(m_io, broadcastListenLoop(), asio::detached);
-  co_spawn(m_io, listenLoop(), asio::detached);
-  co_spawn(m_io, sendLoop(), asio::detached);
 }
 
-void UdpClient::stop() {
-  if (!m_isRunning) return;
-
-  logger->info("Stopping UDP Client");
-
-  m_isRunning = false;
+void UdpClient::stopBroadcastListening() {
+  if (!m_broadcastSocket.is_open()) return;
   m_broadcastSocket.close();
-  m_socket.close();
-}
-
-void UdpClient::restart() {
-  stop();
-  start();
 }
 
 void UdpClient::sendCommand(const std::shared_ptr<IMessage>& command) {
@@ -163,7 +177,8 @@ asio::awaitable<void> UdpClient::listenLoop() {
     if (ec) {
       if (ec == asio::error::operation_aborted && !m_isRunning) break;
       if (ec == asio::error::connection_refused || ec == asio::error::connection_reset) {
-        logger->warn("Destination peer is unreachable ({}:{})", remoteEndpoint.address().to_string(), remoteEndpoint.port());
+        logger->warn("Destination peer is unreachable ({}:{})", remoteEndpoint.address().to_string(),
+                     remoteEndpoint.port());
         continue;
       }
       invokeErrorCallback("Error receiving response: " + ec.message());
@@ -180,11 +195,11 @@ asio::awaitable<void> UdpClient::broadcastListenLoop() {
   std::array<uint8_t, 1500> buffer{};
   asio::ip::udp::endpoint remoteEndpoint;
 
-  while (m_isRunning) {
+  while (true) {
     auto [ec, bytesReceived] = co_await m_broadcastSocket.async_receive_from(asio::buffer(buffer), remoteEndpoint);
 
     if (ec) {
-      if (ec == asio::error::operation_aborted && !m_isRunning) break;
+      if (ec == asio::error::operation_aborted) break;
       invokeErrorCallback("Error receiving broadcast: " + ec.message());
       continue;
     }
