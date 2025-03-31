@@ -7,12 +7,10 @@ namespace vanch {
 UdpClient::UdpClient(asio::io_context& io, const std::string& serverIp, const uint16_t serverPort)
     : Loggable("UdpClient"),
       m_io(io),
-      m_socket(io, asio::ip::udp::endpoint(asio::ip::udp::v4(), 0)),
-      m_broadcastSocket(io, asio::ip::udp::endpoint(asio::ip::udp::v4(), 4444)),
+      m_socket(io),
+      m_broadcastSocket(io),
       m_serverEndpoint(asio::ip::make_address(serverIp), serverPort),
-      m_isRunning(false) {
-  m_broadcastSocket.set_option(asio::socket_base::broadcast(true));
-}
+      m_isRunning(false) {}
 
 UdpClient::~UdpClient() { stop(); }
 
@@ -44,10 +42,55 @@ bool UdpClient::isRunning() { return m_isRunning; }
 void UdpClient::start() {
   if (m_isRunning) return;
 
-  logger->info("Starting UDP Client (listening {}, 4444)", m_socket.local_endpoint().port());
+  asio::error_code ec, ec1, ec2;
+
+  logger->info("Starting UDP Client");
+
+  m_socket.open(asio::ip::udp::v4(), ec);
+  m_socket.bind(asio::ip::udp::endpoint(asio::ip::udp::v4(), 0), ec1);
+
+  if (ec) {
+    logger->error("Failed to open UDP Client socket: {}", ec.message());
+    return;
+  }
+
+  if (ec1) {
+    logger->error("Failed to bind random port for UDP Client socket: {}", ec.message());
+    m_socket.close();
+    return;
+  }
+
+  logger->info("UDP Client port: {}", m_socket.local_endpoint().port());
+
+  bool broadcastOk = true;
+  m_broadcastSocket.open(asio::ip::udp::v4(), ec);
+  m_broadcastSocket.bind(asio::ip::udp::endpoint(asio::ip::udp::v4(), k_defaultBroadcastPort), ec1);
+  m_broadcastSocket.set_option(asio::socket_base::broadcast(true), ec2);
+
+  if (ec) {
+    broadcastOk = false;
+    logger->error("Failed to open UDP Broadcast Server socket: {}", ec.message());
+  }
+
+  if (ec1) {
+    broadcastOk = false;
+    logger->error("Failed to bind port {} for UDP Broadcast Server socket: {}", k_defaultBroadcastPort, ec.message());
+  }
+
+  if (ec2) {
+    broadcastOk = false;
+    logger->error("Failed to set flags for UDP Broadcast Server socket: {}", ec.message());
+  }
+
+  if (broadcastOk) {
+    logger->info("UDP Broadcast Server port: {}", m_broadcastSocket.local_endpoint().port());
+  } else {
+    logger->warn("UDP Broadcast Server socket is not available until the next restart");
+  }
+
   m_isRunning = true;
 
-  co_spawn(m_io, broadcastListenLoop(), asio::detached);
+  if (broadcastOk) co_spawn(m_io, broadcastListenLoop(), asio::detached);
   co_spawn(m_io, listenLoop(), asio::detached);
   co_spawn(m_io, sendLoop(), asio::detached);
 }
@@ -58,8 +101,13 @@ void UdpClient::stop() {
   logger->info("Stopping UDP Client");
 
   m_isRunning = false;
-  m_socket.cancel();
+  m_broadcastSocket.close();
   m_socket.close();
+}
+
+void UdpClient::restart() {
+  stop();
+  start();
 }
 
 void UdpClient::sendCommand(const std::shared_ptr<IMessage>& command) {
@@ -96,9 +144,9 @@ void UdpClient::setErrorCallback(const ErrorCallback& callback) {
 asio::awaitable<bool> UdpClient::tryDequeueCoWait(std::shared_ptr<IMessage>& message) {
   if (m_commandQueue.try_dequeue(message)) co_return true;
 
-  auto timer = asio::steady_timer{co_await asio::this_coro::executor, std::chrono::milliseconds(100)};
+  auto timer = steady_timer{co_await asio::this_coro::executor, std::chrono::milliseconds(100)};
 
-  if (auto [ec] = co_await timer.async_wait(asio::as_tuple(asio::use_awaitable)); ec && ec != asio::error::operation_aborted) {
+  if (auto [ec] = co_await timer.async_wait(); ec && ec != asio::error::operation_aborted) {
     logger->error("Failed to dequeue message from command queue");
   }
 
@@ -110,11 +158,14 @@ asio::awaitable<void> UdpClient::listenLoop() {
   asio::ip::udp::endpoint remoteEndpoint;
 
   while (m_isRunning) {
-    auto [ec, bytesReceived] =
-        co_await m_socket.async_receive_from(asio::buffer(buffer), remoteEndpoint, asio::as_tuple(asio::use_awaitable));
+    auto [ec, bytesReceived] = co_await m_socket.async_receive_from(asio::buffer(buffer), remoteEndpoint);
 
     if (ec) {
       if (ec == asio::error::operation_aborted && !m_isRunning) break;
+      if (ec == asio::error::connection_refused || ec == asio::error::connection_reset) {
+        logger->warn("Destination peer is unreachable ({}:{})", remoteEndpoint.address().to_string(), remoteEndpoint.port());
+        continue;
+      }
       invokeErrorCallback("Error receiving response: " + ec.message());
       continue;
     }
@@ -130,8 +181,7 @@ asio::awaitable<void> UdpClient::broadcastListenLoop() {
   asio::ip::udp::endpoint remoteEndpoint;
 
   while (m_isRunning) {
-    auto [ec, bytesReceived] =
-        co_await m_broadcastSocket.async_receive_from(asio::buffer(buffer), remoteEndpoint, asio::as_tuple(asio::use_awaitable));
+    auto [ec, bytesReceived] = co_await m_broadcastSocket.async_receive_from(asio::buffer(buffer), remoteEndpoint);
 
     if (ec) {
       if (ec == asio::error::operation_aborted && !m_isRunning) break;
@@ -152,7 +202,7 @@ asio::awaitable<void> UdpClient::sendLoop() {
     auto data = command->serialize();
     auto buffer = asio::buffer(data.data(), data.size());
 
-    if (auto [ec, _] = co_await m_socket.async_send_to(buffer, m_serverEndpoint, asio::as_tuple(asio::use_awaitable)); ec) {
+    if (auto [ec, _] = co_await m_socket.async_send_to(buffer, m_serverEndpoint); ec) {
       invokeErrorCallback("Failed to send command: " + ec.message());
     }
   }
@@ -175,6 +225,7 @@ void UdpClient::handleResponse(const std::vector<uint8_t>&& data, const asio::er
     if (message->getType() == MessageType_Error) {
       const auto code = message->getCmdCode();
       invokeErrorCallback(MessageRegistry::getErrorMessage(code), code);
+      invokeCommandCallback(message);
       return;
     }
 

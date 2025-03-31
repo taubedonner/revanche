@@ -9,6 +9,10 @@
 #include "krog/util/loggable.h"
 #include "message.h"
 
+using default_token = asio::as_tuple_t<asio::use_awaitable_t<>>;
+using udp_socket = default_token::as_default_on_t<asio::ip::udp::socket>;
+using steady_timer = default_token::as_default_on_t<asio::steady_timer>;
+
 namespace vanch {
 
 class UdpClient final : kr::Loggable {
@@ -29,6 +33,8 @@ class UdpClient final : kr::Loggable {
   void start();
 
   void stop();
+
+  void restart();
 
   void sendCommand(const std::shared_ptr<IMessage>& command);
 
@@ -61,9 +67,11 @@ class UdpClient final : kr::Loggable {
 
   void invokeErrorCallback(std::string_view error, uint8_t code = 0xFF);
 
+  static constexpr uint16_t k_defaultBroadcastPort{4444};
+
   asio::io_context& m_io;
-  asio::ip::udp::socket m_socket;
-  asio::ip::udp::socket m_broadcastSocket;
+  udp_socket m_socket;
+  udp_socket m_broadcastSocket;
   asio::ip::udp::endpoint m_serverEndpoint;
 
   moodycamel::BlockingReaderWriterCircularBuffer<std::shared_ptr<IMessage>> m_commandQueue{10};

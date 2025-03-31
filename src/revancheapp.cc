@@ -18,6 +18,8 @@ void RevancheApp::OnAttach() {
   m_client.setStatusCallback(KR_BIND_FN(RevancheApp::OnPacketStatus));
   m_client.setErrorCallback(KR_BIND_FN(RevancheApp::OnPacketError));
   m_client.setBroadcastCallback(KR_BIND_FN(RevancheApp::OnPacketBroadcast));
+
+  m_client.setServerEndpoint(m_settings.ip, m_settings.port);
 }
 
 void RevancheApp::OnDetach() {

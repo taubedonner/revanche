@@ -11,3 +11,7 @@ target_link_libraries(revanche PRIVATE Krog::Krog frozen::frozen nlohmann_json::
 target_compile_definitions(revanche PUBLIC NOMINMAX)
 
 target_precompile_headers(revanche PRIVATE pch.hh)
+
+if (WIN32)
+    target_sources(revanche PRIVATE ${CMAKE_SOURCE_DIR}/resources/revanche.rc)
+endif ()
