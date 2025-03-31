@@ -228,13 +228,11 @@ struct MemoryEditor
     }
 
     void DrawChildWindow(const char* title, void* mem_data, size_t mem_size, ImVec2 size = {}, size_t base_display_addr = 0x0000) {
-      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 0.0f));
-      ImGui::BeginChild(title, size, ImGuiChildFlags_Borders, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar);
+      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 2.0f));
+      ImGui::BeginChild(title, size, ImGuiChildFlags_Borders, ImGuiWindowFlags_MenuBar);
       ImGui::PopStyleVar();
       if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu(title)) {
-          ImGui::EndMenu();
-        }
+        ImGui::TextUnformatted(title);
         ImGui::EndMenuBar();
       }
       DrawContents(mem_data, mem_size, base_display_addr);

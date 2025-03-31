@@ -149,7 +149,8 @@ asio::awaitable<void> UdpClient::sendLoop() {
 
     if (!co_await tryDequeueCoWait(command)) continue;
 
-    auto buffer = asio::buffer(command->serialize());
+    auto data = command->serialize();
+    auto buffer = asio::buffer(data.data(), data.size());
 
     if (auto [ec, _] = co_await m_socket.async_send_to(buffer, m_serverEndpoint, asio::as_tuple(asio::use_awaitable)); ec) {
       invokeErrorCallback("Failed to send command: " + ec.message());

@@ -4,6 +4,7 @@
 
 #include "backgroundiocontext.h"
 #include "vanch/messageregistry.h"
+#include "vanch/statuses/status.h"
 #include "vanch/udpclient.h"
 
 struct AppSettings {
@@ -36,10 +37,13 @@ private:
   vanch::UdpClient m_client;
 
   std::shared_ptr<vanch::IMessage> m_command{};
-  std::shared_ptr<vanch::IMessage> m_received{};
-  std::shared_ptr<vanch::IMessage> m_status{};
+  std::shared_ptr<vanch::IMessage> m_return{};
+  std::shared_ptr<vanch::StatusAutoCardReading> m_statusAutoRead{};
+  std::shared_ptr<vanch::StatusHeartbeat> m_statusHeartbeat{};
+  std::unordered_map<std::string, std::shared_ptr<vanch::StatusUdpBroadcast>> m_statusDevices{};
 
-  bool m_show_status{false};
+  bool m_showStatus{false};
+  bool m_showDevList{false};
   AppSettings m_settings{};
 };
 

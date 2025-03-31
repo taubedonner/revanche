@@ -4,6 +4,9 @@
 
 #include <nlohmann/json.hpp>
 
+#include <fmt/format.h>
+#include <fmt/chrono.h>
+
 #include "imgui_stdlib.h"
 #include "krog/util/persistentconfig.h"
 
@@ -70,11 +73,13 @@ void RevancheApp::OnUiUpdate() {
       ImGui::SameLine(ImGui::GetContentRegionMax().x - 265.0f - ImGui::GetStyle().FramePadding.x, 0.0f);
       static std::string show_status_btn = fmt::format("{}  Show Status", CarbonIcons::Iot::Platform);
       if (ImGui::Button(show_status_btn.c_str(), {120, 0})) {
-        m_show_status = true;
+        m_showStatus = true;
       }
       ImGui::SameLine();
       static std::string send_btn = fmt::format("{}  Send Command", CarbonIcons::Mail::All);
       if (ImGui::DisablingButton(send_btn.c_str(), !is_connected || !m_command, {145, 0})) {
+        const auto now = std::chrono::system_clock::now();
+        m_command->messageTimestamp = {now};
         m_client.sendCommand(m_command);
       }
     }
@@ -82,13 +87,14 @@ void RevancheApp::OnUiUpdate() {
     ImGui::Spacing();
 
     {
+      auto cmds = vanch::MessageRegistry::getCommandMetadata();
       ImGui::BeginChild("left pane", ImVec2(200, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX,
                         ImGuiWindowFlags_MenuBar);
       if (ImGui::BeginMenuBar()) {
-        ImGui::TextUnformatted("Command List");
+        ImGui::Text("Command List (%llu)", cmds.size());
         ImGui::EndMenuBar();
       }
-      for (const auto& [k, v] : vanch::MessageRegistry::getCommandMetadata()) {
+      for (const auto& [k, v] : cmds) {
         if (auto label = fmt::format("{:02X}H {}", k, v);
             ImGui::Selectable(label.c_str(), (m_command && m_command->getCmdCode() == k))) {
           m_command = vanch::MessageRegistry::create(k, vanch::MessageType_Command);
@@ -103,6 +109,12 @@ void RevancheApp::OnUiUpdate() {
                         ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY, ImGuiWindowFlags_MenuBar);
       if (ImGui::BeginMenuBar()) {
         ImGui::TextUnformatted("Command Editor");
+        if (m_command && m_command->messageTimestamp.has_value()) {
+          const auto val = std::chrono::floor<std::chrono::duration<int64_t, std::milli>>(m_command->messageTimestamp.value());
+          auto ts = fmt::format("Sent at: {:%H:%M:%S}", std::chrono::current_zone()->to_local(val));
+          ImGui::SameLine(ImGui::GetContentRegionMax().x - ImGui::CalcTextSize(ts.c_str()).x - 6.0f);
+          ImGui::TextDisabled("%s", ts.c_str());
+        }
         ImGui::EndMenuBar();
       }
       if (m_command) {
@@ -111,15 +123,33 @@ void RevancheApp::OnUiUpdate() {
         ImGui::Separator();
         ImGui::Spacing();
         m_command->render();
+      } else {
+        const auto lab = "Command is not selected";
+        const auto txtSize = ImGui::CalcTextSize(lab);
+        const auto content = ImGui::GetContentRegionMax();
+        ImGui::SetCursorPos({(content.x - txtSize.x) / 2.0f, (content.y + txtSize.y) / 2.0f});
+        ImGui::TextDisabled(lab);
       }
       ImGui::EndChild();
       ImGui::BeginChild("output message", ImVec2(0, 0), ImGuiChildFlags_Borders, ImGuiWindowFlags_MenuBar);
       if (ImGui::BeginMenuBar()) {
         ImGui::TextUnformatted("Response View");
+        if (m_return && m_return->messageTimestamp.has_value()) {
+          const auto val = std::chrono::floor<std::chrono::duration<int64_t, std::milli>>(m_return->messageTimestamp.value());
+          auto ts = fmt::format("Received at: {:%H:%M:%S}", std::chrono::current_zone()->to_local(val));
+          ImGui::SameLine(ImGui::GetContentRegionMax().x - ImGui::CalcTextSize(ts.c_str()).x - 6.0f);
+          ImGui::TextDisabled("%s", ts.c_str());
+        }
         ImGui::EndMenuBar();
       }
-      if (m_received) {
-        m_received->render();
+      if (m_return) {
+        m_return->render();
+      } else {
+        const auto lab = "Nothing to show";
+        const auto txtSize = ImGui::CalcTextSize(lab);
+        const auto content = ImGui::GetContentRegionMax();
+        ImGui::SetCursorPos({(content.x - txtSize.x) / 2.0f, (content.y + txtSize.y) / 2.0f});
+        ImGui::TextDisabled(lab);
       }
       ImGui::EndChild();
       ImGui::EndGroup();
@@ -127,20 +157,45 @@ void RevancheApp::OnUiUpdate() {
   }
   ImGui::End();
 
-  if (!m_show_status) return;
+  if (!m_showStatus) return;
 
   ImGui::SetNextWindowSize({840, 480}, ImGuiCond_Once);
-  if (ImGui::Begin("Status Checker", &m_show_status)) {
-    if (m_status) {
-      m_status->render();
+  if (ImGui::Begin("Status Viewer", &m_showStatus)) {
+    if (m_statusAutoRead) {
+      m_statusAutoRead->render();
+
+      if (m_statusAutoRead->messageTimestamp.has_value()) {
+        ImGui::Spacing();
+        ImGui::Separator();
+        const auto ts = std::chrono::floor<std::chrono::minutes>(m_statusAutoRead->messageTimestamp.value());
+        const auto msd = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - ts);
+        ImGui::TextUnformatted(fmt::format("{:%H:%M:%S} ({:%S}s)", std::chrono::current_zone()->to_local(ts),
+                                           std::chrono::floor<std::chrono::duration<int64_t, std::deci> >(msd)) .c_str());
+      }
     }
   }
   ImGui::End();
 }
 
-void RevancheApp::OnPacketReturn(const std::shared_ptr<vanch::IMessage>& msg) { m_received = msg; }
+void RevancheApp::OnPacketReturn(const std::shared_ptr<vanch::IMessage>& msg) {
+  if (!msg) return;
 
-void RevancheApp::OnPacketStatus(const std::shared_ptr<vanch::IMessage>& msg) { m_status = msg; }
+  msg->messageTimestamp = {std::chrono::system_clock::now()};
+
+  m_return = msg;
+}
+
+void RevancheApp::OnPacketStatus(const std::shared_ptr<vanch::IMessage>& msg) {
+  if (!msg) return;
+
+  msg->messageTimestamp = {std::chrono::system_clock::now()};
+
+  switch (msg->getCmdCode()) {
+    case 0x01: m_statusAutoRead = std::dynamic_pointer_cast<vanch::StatusAutoCardReading>(msg); break;
+    case 0x03: m_statusHeartbeat = std::dynamic_pointer_cast<vanch::StatusHeartbeat>(msg); break;
+    default: logger->warn("Unknown status message with code 0x{:02x}", msg->getCmdCode());
+  }
+}
 
 void RevancheApp::OnPacketError(std::string_view message, const uint8_t code) {
   if (code == 0xFF) {
@@ -148,8 +203,16 @@ void RevancheApp::OnPacketError(std::string_view message, const uint8_t code) {
   } else {
     logger->error("Received device error {}: {}", code, message);
   }
+
+  m_return = nullptr;
 }
 
 void RevancheApp::OnPacketBroadcast(const std::shared_ptr<vanch::IMessage>& msg) {
-  logger->info("Broadcast works!");
+  if (!msg || msg->getCmdCode() != 0x02) return;
+
+  msg->messageTimestamp = {std::chrono::system_clock::now()};
+
+  const auto sd = std::dynamic_pointer_cast<vanch::StatusUdpBroadcast>(msg);
+
+  m_statusDevices[sd->deviceId] = sd;
 }

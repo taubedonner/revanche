@@ -17,6 +17,8 @@ enum MessageType : uint8_t {
 struct IMessage {
   virtual ~IMessage() = default;
 
+  std::optional<std::chrono::time_point<std::chrono::system_clock>> messageTimestamp;
+
   [[nodiscard]] virtual std::string getMessageName() const = 0;
 
   [[nodiscard]] virtual MessageType getType() const = 0;
