@@ -1,11 +1,10 @@
 #include "revancheapp.h"
 
+#include <fmt/chrono.h>
+#include <fmt/format.h>
 #include <krog/ui/misc/carbon_icons.h>
 
 #include <nlohmann/json.hpp>
-
-#include <fmt/format.h>
-#include <fmt/chrono.h>
 
 #include "imgui_stdlib.h"
 #include "krog/util/persistentconfig.h"
@@ -26,6 +25,16 @@ void RevancheApp::OnDetach() {
   config["server-ip"] = m_settings.ip;
   config["server-port"] = m_settings.port;
   kr::PersistentConfig::Save();
+}
+
+static void renderCell(const std::string& text) {
+  ImGui::TextUnformatted(text.c_str());
+  if (ImGui::BeginPopupContextItem(fmt::format("{}.{}", ImGui::GetColumnIndex(), text).c_str())) {
+    if (ImGui::MenuItem("Copy")) {
+      ImGui::SetClipboardText(text.c_str());
+    }
+    ImGui::EndPopup();
+  }
 }
 
 void RevancheApp::OnUiUpdate() {
@@ -70,9 +79,28 @@ void RevancheApp::OnUiUpdate() {
       }
       ImGui::EndGroup();
       ImGui::SetItemTooltip("Press <Enter> to apply");
-      ImGui::SameLine(ImGui::GetContentRegionMax().x - 265.0f - ImGui::GetStyle().FramePadding.x, 0.0f);
-      static std::string show_status_btn = fmt::format("{}  Show Status", CarbonIcons::Iot::Platform);
-      if (ImGui::Button(show_status_btn.c_str(), {120, 0})) {
+      ImGui::SameLine(ImGui::GetContentRegionMax().x - 401.0f - ImGui::GetStyle().FramePadding.x, 0.0f);
+      std::string showDevicesBtn = fmt::format("{} {:>3}", CarbonIcons::Query, m_statusDevices.size());
+      if (ImGui::ColoredButton(showDevicesBtn.c_str(), sp.Color(Col::GREEN1000, 0.15), sp.Color(Col::GREEN900),
+                               {60, 0})) {
+        m_showDevList = true;
+      }
+      ImGui::SameLine();
+      std::string hbTime = "\xE2\x88\x9E";
+      if (m_statusHeartbeat && m_statusHeartbeat->messageTimestamp.has_value()) {
+        auto val = m_statusHeartbeat->messageTimestamp.value();
+        auto now = std::chrono::system_clock::now();
+        auto time = std::chrono::duration_cast<std::chrono::seconds>(now - val).count();
+        if (time < 100) hbTime = fmt::format("{}s", time);
+      }
+      std::string heartbeatBtn = fmt::format("{} {:>3}", CarbonIcons::Activity, hbTime);
+      if (ImGui::ColoredButton(heartbeatBtn.c_str(), sp.Color(Col::YELLOW1000, 0.15), sp.Color(Col::YELLOW900),
+                               {60, 0})) {
+        m_showStatus = true;
+      }
+      ImGui::SameLine();
+      static std::string showStatusBtn = fmt::format("{}  Auto Read", CarbonIcons::Iot::Platform);
+      if (ImGui::Button(showStatusBtn.c_str(), {120, 0})) {
         m_showStatus = true;
       }
       ImGui::SameLine();
@@ -110,7 +138,8 @@ void RevancheApp::OnUiUpdate() {
       if (ImGui::BeginMenuBar()) {
         ImGui::TextUnformatted("Command Editor");
         if (m_command && m_command->messageTimestamp.has_value()) {
-          const auto val = std::chrono::floor<std::chrono::duration<int64_t, std::milli>>(m_command->messageTimestamp.value());
+          const auto val =
+              std::chrono::floor<std::chrono::duration<int64_t, std::milli>>(m_command->messageTimestamp.value());
           auto ts = fmt::format("Sent at: {:%H:%M:%S}", std::chrono::current_zone()->to_local(val));
           ImGui::SameLine(ImGui::GetContentRegionMax().x - ImGui::CalcTextSize(ts.c_str()).x - 6.0f);
           ImGui::TextDisabled("%s", ts.c_str());
@@ -135,7 +164,8 @@ void RevancheApp::OnUiUpdate() {
       if (ImGui::BeginMenuBar()) {
         ImGui::TextUnformatted("Response View");
         if (m_return && m_return->messageTimestamp.has_value()) {
-          const auto val = std::chrono::floor<std::chrono::duration<int64_t, std::milli>>(m_return->messageTimestamp.value());
+          const auto val =
+              std::chrono::floor<std::chrono::duration<int64_t, std::milli>>(m_return->messageTimestamp.value());
           auto ts = fmt::format("Received at: {:%H:%M:%S}", std::chrono::current_zone()->to_local(val));
           ImGui::SameLine(ImGui::GetContentRegionMax().x - ImGui::CalcTextSize(ts.c_str()).x - 6.0f);
           ImGui::TextDisabled("%s", ts.c_str());
@@ -157,24 +187,73 @@ void RevancheApp::OnUiUpdate() {
   }
   ImGui::End();
 
-  if (!m_showStatus) return;
-
-  ImGui::SetNextWindowSize({840, 480}, ImGuiCond_Once);
-  if (ImGui::Begin("Status Viewer", &m_showStatus)) {
-    if (m_statusAutoRead) {
-      m_statusAutoRead->render();
-
-      if (m_statusAutoRead->messageTimestamp.has_value()) {
-        ImGui::Spacing();
-        ImGui::Separator();
-        const auto ts = std::chrono::floor<std::chrono::minutes>(m_statusAutoRead->messageTimestamp.value());
-        const auto msd = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - ts);
-        ImGui::TextUnformatted(fmt::format("{:%H:%M:%S} ({:%S}s)", std::chrono::current_zone()->to_local(ts),
-                                           std::chrono::floor<std::chrono::duration<int64_t, std::deci> >(msd)) .c_str());
+  if (m_showStatus) {
+    ImGui::SetNextWindowSize({840, 480}, ImGuiCond_Once);
+    if (ImGui::Begin("Status Viewer", &m_showStatus)) {
+      if (m_statusAutoRead) {
+        m_statusAutoRead->render();
       }
     }
+    ImGui::End();
   }
-  ImGui::End();
+
+  if (m_showDevList) {
+    ImGui::SetNextWindowSize({1280, 480}, ImGuiCond_Once);
+    if (ImGui::Begin("Device Finder", &m_showDevList)) {
+      if (m_statusDevices.empty()) {
+        const auto lab = "No reported devices";
+        const auto txtSize = ImGui::CalcTextSize(lab);
+        const auto content = ImGui::GetContentRegionMax();
+        ImGui::SetCursorPos({(content.x - txtSize.x) / 2.0f, (content.y + txtSize.y) / 2.0f});
+        ImGui::TextDisabled(lab);
+      } else if (ImGui::BeginTable("DeviceTable", 9, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable)) {
+        ImGui::TableSetupColumn("IP");
+        ImGui::TableSetupColumn("Port");
+        ImGui::TableSetupColumn("Dev Type");
+        ImGui::TableSetupColumn("ID");
+        ImGui::TableSetupColumn("RS485");
+        ImGui::TableSetupColumn("RS232 Baud");
+        ImGui::TableSetupColumn("RS485 Baud");
+        ImGui::TableSetupColumn("Time");
+        ImGui::TableSetupColumn("Int Model");
+        ImGui::TableHeadersRow();
+
+        for (const auto& packet : m_statusDevices | std::views::values) {
+          ImGui::TableNextRow();
+
+          std::string elapsed = "N/A";
+          if (packet->messageTimestamp.has_value()) {
+            auto val = packet->messageTimestamp.value();
+            auto now = std::chrono::system_clock::now();
+            auto seconds = std::chrono::duration_cast<std::chrono::seconds>(now - val).count();
+            const auto time = std::chrono::floor<std::chrono::duration<int64_t>>(val);
+            elapsed = fmt::format("{:%H:%M:%S} ({} s)", std::chrono::current_zone()->to_local(time), seconds);
+          }
+
+          ImGui::TableSetColumnIndex(0);
+          renderCell(packet->ipAddress);
+          ImGui::TableSetColumnIndex(1);
+          renderCell(std::to_string(packet->port));
+          ImGui::TableSetColumnIndex(2);
+          renderCell(packet->deviceType);
+          ImGui::TableSetColumnIndex(3);
+          renderCell(packet->deviceId);
+          ImGui::TableSetColumnIndex(4);
+          renderCell(std::to_string(packet->rs485Address));
+          ImGui::TableSetColumnIndex(5);
+          renderCell(std::to_string(packet->rs232BaudRate));
+          ImGui::TableSetColumnIndex(6);
+          renderCell(std::to_string(packet->rs485BaudRate));
+          ImGui::TableSetColumnIndex(7);
+          renderCell(elapsed);
+          ImGui::TableSetColumnIndex(8);
+          renderCell(std::to_string(packet->internalModel));
+        }
+        ImGui::EndTable();
+      }
+      ImGui::End();
+    }
+  }
 }
 
 void RevancheApp::OnPacketReturn(const std::shared_ptr<vanch::IMessage>& msg) {
@@ -191,9 +270,14 @@ void RevancheApp::OnPacketStatus(const std::shared_ptr<vanch::IMessage>& msg) {
   msg->messageTimestamp = {std::chrono::system_clock::now()};
 
   switch (msg->getCmdCode()) {
-    case 0x01: m_statusAutoRead = std::dynamic_pointer_cast<vanch::StatusAutoCardReading>(msg); break;
-    case 0x03: m_statusHeartbeat = std::dynamic_pointer_cast<vanch::StatusHeartbeat>(msg); break;
-    default: logger->warn("Unknown status message with code 0x{:02x}", msg->getCmdCode());
+    case 0x01:
+      m_statusAutoRead = std::dynamic_pointer_cast<vanch::StatusAutoCardReading>(msg);
+      break;
+    case 0x03:
+      m_statusHeartbeat = std::dynamic_pointer_cast<vanch::StatusHeartbeat>(msg);
+      break;
+    default:
+      logger->warn("Unknown status message with code 0x{:02x}", msg->getCmdCode());
   }
 }
 
