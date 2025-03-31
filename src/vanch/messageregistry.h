@@ -1,26 +1,30 @@
 #pragma once
 
-#include "vanch/message.h"
-
 #include <frozen/unordered_map.h>
 
+#include "vanch/message.h"
+
 namespace vanch {
+
 struct CommandMetadata {
   uint8_t cmdCode;
   std::string name;
 };
 
 class MessageRegistry {
-public:
+ public:
   using FactoryFunction = std::function<std::shared_ptr<IMessage>()>;
 
   static void init();
 
-  static void registerMessage(uint8_t cmdCode, MessageType type, const FactoryFunction& factory, const std::string& name) {
+  static void registerMessage(uint8_t cmdCode, MessageType type, const FactoryFunction& factory,
+                              const std::string& name) {
     const auto& registry = getRegistry();
     const auto key = std::make_pair(cmdCode, type);
 
-    if (registry.contains(key)) {return;}
+    if (registry.contains(key)) {
+      return;
+    }
 
     getRegistry()[key] = factory;
 
@@ -70,7 +74,7 @@ public:
     return "Unknown error";
   }
 
-private:
+ private:
   static std::map<std::pair<uint8_t, MessageType>, FactoryFunction>& getRegistry() {
     static std::map<std::pair<uint8_t, MessageType>, FactoryFunction> registry;
     return registry;
@@ -171,7 +175,7 @@ private:
       {0x5B, "0x5B Reserved"},
       {0x5C, "0x5C Reserved"},
       {0x5D, "0x5D Module assembly failed, the assembly position is occupied"},
-      {0x5E, "0x5E This module is not installed and this parameter cannot be set and obtained"}
-  };
+      {0x5E, "0x5E This module is not installed and this parameter cannot be set and obtained"}};
 };
-} // vanch
+
+}  // namespace vanch

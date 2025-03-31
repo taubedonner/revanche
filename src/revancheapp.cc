@@ -150,4 +150,6 @@ void RevancheApp::OnPacketError(std::string_view message, const uint8_t code) {
   }
 }
 
-void RevancheApp::OnPacketBroadcast(const vanch::BroadcastPacket& msg) { logger->info("broadcast {}", msg.IP); }
+void RevancheApp::OnPacketBroadcast(const std::shared_ptr<vanch::IMessage>& msg) {
+  logger->info("Broadcast works!");
+}

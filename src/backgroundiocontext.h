@@ -1,6 +1,6 @@
 #pragma once
 
-#include <asio.hpp>
+#include <../cmake-build-debug-visual-studio/_deps/asio-src/asio/include/asio.hpp>
 
 class BackgroundIoContext {
  public:

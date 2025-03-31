@@ -11,23 +11,11 @@
 
 namespace vanch {
 
-struct BroadcastPacket {
-  std::string IP;          // IP адрес ридера
-  uint16_t Port;           // Порт ридера
-  std::string DeviceType;  // Модель устройства
-  std::string ID;          // Идентификатор устройства
-  uint8_t RS485;           // Адрес RS485
-  uint32_t RS232Baud;      // Скорость RS232
-  uint32_t RS485Baud;      // Скорость RS485
-  uint8_t ti;              // Внутренний код материнской платы
-  std::chrono::time_point<std::chrono::system_clock> ts;
-};
-
 class UdpClient final : kr::Loggable {
  public:
   using CommandCallback = std::function<void(const std::shared_ptr<IMessage>&)>;
   using StatusCallback = std::function<void(const std::shared_ptr<IMessage>&)>;
-  using BroadcastCallback = std::function<void(const BroadcastPacket&)>;
+  using BroadcastCallback = std::function<void(const std::shared_ptr<IMessage>&)>;
   using ErrorCallback = std::function<void(std::string_view, uint8_t code)>;
 
   UdpClient(asio::io_context& io, const std::string& serverIp, uint16_t serverPort);
@@ -53,8 +41,6 @@ class UdpClient final : kr::Loggable {
   void setErrorCallback(const ErrorCallback& callback);
 
  private:
-  BroadcastPacket parseBroadcastPacket(std::span<const uint8_t> data);
-
   asio::awaitable<bool> tryDequeueCoWait(std::shared_ptr<IMessage>& message);
 
   asio::awaitable<void> listenLoop();
@@ -71,7 +57,7 @@ class UdpClient final : kr::Loggable {
 
   void invokeStatusCallback(const std::shared_ptr<IMessage>& status);
 
-  void invokeBroadcastCallback(const BroadcastPacket& broadcast);
+  void invokeBroadcastCallback(const std::shared_ptr<IMessage>& broadcast);
 
   void invokeErrorCallback(std::string_view error, uint8_t code = 0xFF);
 

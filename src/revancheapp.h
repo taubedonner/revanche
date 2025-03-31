@@ -2,7 +2,7 @@
 
 #include <krog/entry.h>
 
-#include "vanch/backgroundiocontext.h"
+#include "backgroundiocontext.h"
 #include "vanch/messageregistry.h"
 #include "vanch/udpclient.h"
 
@@ -30,7 +30,7 @@ private:
 
   void OnPacketError(std::string_view message, uint8_t code);
 
-  void OnPacketBroadcast(const vanch::BroadcastPacket& msg);
+  void OnPacketBroadcast(const std::shared_ptr<vanch::IMessage>& msg);
 
   BackgroundIoContext m_io;
   vanch::UdpClient m_client;

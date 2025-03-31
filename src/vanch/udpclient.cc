@@ -93,30 +93,6 @@ void UdpClient::setErrorCallback(const ErrorCallback& callback) {
   m_errorCallback = callback;
 }
 
-BroadcastPacket UdpClient::parseBroadcastPacket(std::span<const uint8_t> data) {
-  using json = nlohmann::json;
-  BroadcastPacket packet{};
-  std::string jsonString(reinterpret_cast<const char*>(data.data()), data.size());
-
-  try {
-    json jsonData = json::parse(jsonString);
-    packet.IP = jsonData.at("IP").get<std::string>();
-    packet.Port = jsonData.at("Port").get<uint16_t>();
-    packet.DeviceType = jsonData.at("DeviceType").get<std::string>();
-    packet.ID = jsonData.at("ID").get<std::string>();
-    packet.RS485 = jsonData.at("RS485").get<uint8_t>();
-    packet.RS232Baud = jsonData.at("RS232Baud").get<uint32_t>();
-    packet.RS485Baud = jsonData.at("RS485Baud").get<uint32_t>();
-    packet.ti = jsonData.at("ti").get<uint8_t>();
-  } catch (const json::exception& e) {
-    logger->warn("JSON parsing error: " + std::string(e.what()));
-  }
-
-  packet.ts = std::chrono::system_clock::now();
-
-  return packet;
-}
-
 asio::awaitable<bool> UdpClient::tryDequeueCoWait(std::shared_ptr<IMessage>& message) {
   if (m_commandQueue.try_dequeue(message)) co_return true;
 
@@ -209,8 +185,11 @@ void UdpClient::handleResponse(const std::vector<uint8_t>&& data, const asio::er
 void UdpClient::handleBroadcast(const std::vector<uint8_t>&& data, const asio::error_code& ec) {
   if (ec && data.empty()) return;
 
-  const auto message = parseBroadcastPacket(data);
-  invokeBroadcastCallback(message);
+  if (const auto message = MessageRegistry::createFromData(data)) {
+    if (message->getType() == MessageType_Status) {
+      invokeBroadcastCallback(message);
+    }
+  }
 }
 
 void UdpClient::invokeCommandCallback(const std::shared_ptr<IMessage>& response) {
@@ -227,7 +206,7 @@ void UdpClient::invokeStatusCallback(const std::shared_ptr<IMessage>& status) {
   }
 }
 
-void UdpClient::invokeBroadcastCallback(const BroadcastPacket& broadcast) {
+void UdpClient::invokeBroadcastCallback(const std::shared_ptr<IMessage>& broadcast) {
   std::lock_guard lock(m_callbackMutex);
   if (m_broadcastCallback) {
     m_broadcastCallback(broadcast);
