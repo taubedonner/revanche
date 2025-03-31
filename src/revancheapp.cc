@@ -33,7 +33,7 @@ void RevancheApp::OnDetach() {
 
 static void renderCell(const std::string& text) {
   ImGui::TextUnformatted(text.c_str());
-  if (ImGui::BeginPopupContextItem(fmt::format("{}.{}", ImGui::GetColumnIndex(), text).c_str())) {
+  if (ImGui::BeginPopupContextItem(fmt::format("{}.{}", ImGui::GetColumnIndex(), ImGui::TableGetRowIndex()).c_str())) {
     if (ImGui::MenuItem("Copy")) {
       ImGui::SetClipboardText(text.c_str());
     }
@@ -194,17 +194,140 @@ void RevancheApp::OnUiUpdate() {
   ImGui::End();
 
   if (m_showStatus) {
-    ImGui::SetNextWindowSize({840, 480}, ImGuiCond_Once);
+    const auto center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Once, {0.5f, 0.5f});
+    ImGui::SetNextWindowSize({360, 512}, ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Status Viewer", &m_showStatus)) {
+      //ImGui::TextUnformatted("Status Packet Stats:");
+      if (ImGui::BeginTable("PacketStats", 2, ImGuiTableFlags_None)) {
+        ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+        //ImGui::TableHeadersRow();
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::TextUnformatted("Auto Reading Data received at:");
+        ImGui::TableSetColumnIndex(1);
+        if (m_statusAutoRead && m_statusAutoRead->messageTimestamp.has_value()) {
+          const auto statusTime = std::chrono::floor<std::chrono::duration<int64_t, std::milli>>(m_statusAutoRead->messageTimestamp.value());
+          auto statusTimeStr = fmt::format("{:%H:%M:%S}", std::chrono::current_zone()->to_local(statusTime));
+          ImGui::TextUnformatted(statusTimeStr.c_str());
+        } else {
+          ImGui::TextUnformatted("Unknown");
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::TextUnformatted("Heartbeat received at:");
+        ImGui::TableSetColumnIndex(1);
+        if (m_statusHeartbeat && m_statusHeartbeat->messageTimestamp.has_value()) {
+          const auto hbTime = std::chrono::floor<std::chrono::duration<int64_t, std::milli>>(m_statusHeartbeat->messageTimestamp.value());
+          auto hbTimeStr = fmt::format("{:%H:%M:%S}", std::chrono::current_zone()->to_local(hbTime));
+          ImGui::TextUnformatted(hbTimeStr.c_str());
+        } else {
+          ImGui::TextUnformatted("Unknown");
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::TextUnformatted("Heartbeat value:");
+        ImGui::TableSetColumnIndex(1);
+        if (m_statusHeartbeat) {
+          renderCell(m_statusHeartbeat->heartbeatData);
+        } else {
+          ImGui::TextUnformatted("N/A");
+        }
+
+        ImGui::EndTable();
+      }
+
       if (m_statusAutoRead) {
-        m_statusAutoRead->render();
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::TextUnformatted("Auto Reading Data:");
+        if (ImGui::BeginTable("AutoReadingDataTable", 2, ImGuiTableFlags_Borders, {0, -1})) {
+          ImGui::TableSetupColumn("Field", ImGuiTableColumnFlags_WidthFixed);
+          ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+          ImGui::TableHeadersRow();
+
+          static auto AddRow = [](const char* fieldName, const std::string& fieldValue) {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextUnformatted(fieldName);
+            ImGui::TableSetColumnIndex(1);
+            renderCell(fieldValue);
+          };
+
+          AddRow("Antenna Number", std::to_string(m_statusAutoRead->antennaNumber));
+
+          {
+            std::string channels = fmt::format("{}", fmt::join(m_statusAutoRead->triggeredChannels, ", "));
+            AddRow("Triggered Channels", channels);
+          }
+
+          AddRow("Direction", m_statusAutoRead->direction);
+          AddRow("IP Address", m_statusAutoRead->ipAddress);
+          AddRow("EPC", m_statusAutoRead->epc);
+          AddRow("TID", m_statusAutoRead->tid);
+          AddRow("User Area", m_statusAutoRead->userArea);
+          AddRow("Device ID", m_statusAutoRead->deviceId);
+          AddRow("RSSI", std::to_string(m_statusAutoRead->rssi));
+          AddRow("Timestamp", std::to_string(m_statusAutoRead->timestamp));
+
+          {
+            std::string tagTypeStr;
+            switch (m_statusAutoRead->tagType) {
+              case 0x01:
+                tagTypeStr = "6C";
+                break;
+              case 0x02:
+                tagTypeStr = "6B";
+                break;
+              case 0x41:
+                tagTypeStr = "Type-A (ISO-14443A)";
+                break;
+              case 0x42:
+                tagTypeStr = "Type-B";
+                break;
+              case 0x46:
+                tagTypeStr = "Type-F";
+                break;
+              case 0x56:
+                tagTypeStr = "Type-V (ISO-15693)";
+                break;
+              default:
+                tagTypeStr = "Unknown";
+                break;
+            }
+            AddRow("Tag Type", tagTypeStr);
+          }
+
+          for (size_t i = 0; i < m_statusAutoRead->customFields.size(); ++i) {
+            std::string fieldName = fmt::format("Custom Field {}", i + 1);
+
+            std::string hexValue;
+            for (char c : m_statusAutoRead->customFields[i])
+              hexValue += fmt::format("{:02X}", static_cast<unsigned char>(c));
+
+            AddRow(fieldName.c_str(), hexValue);
+          }
+
+          if (m_statusAutoRead->temperature != 0.0f) {
+            AddRow("Temperature", fmt::format("{:.2f}", m_statusAutoRead->temperature));
+          }
+
+          ImGui::EndTable();
+        }
       }
     }
     ImGui::End();
   }
 
   if (m_showDevList) {
-    ImGui::SetNextWindowSize({840, 360}, ImGuiCond_Once);
+    const auto center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Once, {0.5f, 0.5f});
+    ImGui::SetNextWindowSize({840, 360}, ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Device Finder", &m_showDevList)) {
       if (m_statusDevices.empty()) {
         const auto lab = "No reported devices";
@@ -254,8 +377,8 @@ void RevancheApp::OnUiUpdate() {
         }
         ImGui::EndTable();
       }
-      ImGui::End();
     }
+    ImGui::End();
   }
 }
 
